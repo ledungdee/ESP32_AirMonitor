@@ -1,26 +1,25 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WebServer.h>
+//#include <WebServer.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <HardwareSerial.h>
-#include <WebServer.h>
-
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
 
 boolean readPMSdata(Stream *s);
 void lcd_Init();
 void wifi_Init();
 void GSM_Init();
 void send_SMS(String sms);
-void server_Init();
-void handle_OnConnect();
-void handle_NotFound();
+//void server_Init();
+//void handle_OnConnect();
+//void handle_NotFound();
 void check_MQ135();
 void check_DHT11();
 void check_PMS();
-String SendHTML(int pm1, int pm25, int pm10, float tempC, float humi);
-
+//String SendHTML(int pm1, int pm25, int pm10, float tempC, float humi);
 
 
 #define BUZZER 23
@@ -35,8 +34,8 @@ bool ledState = 0, buzzerState = 0, RL1State = 0;
 bool gasDetect = 0;
 bool fireAlert = 0, airAlert = 0;
 int pm1State = 0, pm25State = 0, pm10State = 0;
-const char* ssid = "A3a.10";
-const char* password = "888888Aa";
+const char* ssid = "Ha ha ha";
+const char* password = "12334566";
 char default_num[13] = {'+', '8', '4', '9', '6', '7', '9', '9', '2', '2', '9', '8' };
 float humi = 0, tempC = 0, tempF = 0;
 
@@ -52,8 +51,9 @@ struct pms7003data data;
 
 DHT dht_sensor(DHT_SENSOR_PIN, DHT_SENSOR_TYPE);
 LiquidCrystal_I2C lcd(0x27,20,4);
-WebServer server(80);
-
+//WebServer server(80);
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
 
 void setup() 
 {
@@ -73,7 +73,33 @@ void setup()
   lcd_Init();
   wifi_Init();
   GSM_Init();
-  server_Init();
+   // Initialize SPIFFS
+  if(!SPIFFS.begin()){
+    return;
+  }
+  //server_Init();
+    // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html");
+  });
+  server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(tempC).c_str());
+  });
+  server.on("/humidity", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(humi).c_str());
+  });
+  server.on("/pm25", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(data.pm25_env).c_str());
+  });
+  server.on("/pm10", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(data.pm10_env).c_str());
+  });
+  server.on("/pm100", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(data.pm100_env).c_str());
+  });
+  // Start server
+  server.begin();
+  
 }
 
 void loop() {
@@ -90,10 +116,10 @@ void loop() {
     send_SMS("Air quantity: BAD");
     airAlert = 1;
   }
-  if (pm25State == 2 && airAlert == 1 ) 
+  if (pm25State == 1 && airAlert == 1 ) 
     airAlert == 0;
 
-  server.handleClient();
+  //server.handleClient();
 }
 void lcd_Init(){
   lcd.init();         
@@ -139,78 +165,78 @@ void send_SMS(String sms)
   Serial.write(26);
 }
 
-void server_Init(){
-  server.on("/", handle_OnConnect);
-  server.onNotFound(handle_NotFound);
-  server.begin();
-  delay(1000);
+// void server_Init(){
+//   server.on("/", handle_OnConnect);
+//   server.onNotFound(handle_NotFound);
+//   server.begin();
+//   delay(1000);
 
-}
+// }
 
-void handle_OnConnect(){
-  server.send(200, "text/html", SendHTML(data.pm10_env, data.pm25_env, data.pm100_env, tempC, humi));
-}
+// void handle_OnConnect(){
+//   server.send(200, "text/html", SendHTML(data.pm10_env, data.pm25_env, data.pm100_env, tempC, humi));
+// }
 
-void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
-}
+// void handle_NotFound(){
+//   server.send(404, "text/plain", "Not found");
+// }
 
-String SendHTML(int pm1, int pm25, int pm10, float tempC, float humi){
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr += "<title>Air monitoring</title>\n";
-  ptr += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr += "body{margin-top: 24px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
-  ptr += "p {font-size: 20px;color: #444444;margin-bottom: 10px;}\n";
-  ptr += "</style>\n";
-  ptr += "<script>\n";
-  ptr += "setInterval(loadDoc,1000);\n";
-  ptr += "function loadDoc() {\n";
-  ptr += "var xhttp = new XMLHttpRequest();\n";
-  ptr += "xhttp.onreadystatechange = function() {\n";
-  ptr += "if (this.readyState == 4 && this.status == 200) {\n";
-  ptr += "document.body.innerHTML =this.responseText}\n";
-  ptr += "};\n";
-  ptr += "xhttp.open(\"GET\", \"/\", true);\n";
-  ptr += "xhttp.send();\n";
-  ptr += "}\n";
-  ptr += "</script>\n";
-  ptr += "</head>\n";
-  ptr += "<body>\n";
-  ptr += "<div id=\"webpage\">\n";
+// String SendHTML(int pm1, int pm25, int pm10, float tempC, float humi){
+//   String ptr = "<!DOCTYPE html> <html>\n";
+//   ptr += "<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+//   ptr += "<title>Air monitoring</title>\n";
+//   ptr += "<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+//   ptr += "body{margin-top: 24px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
+//   ptr += "p {font-size: 20px;color: #444444;margin-bottom: 10px;}\n";
+//   ptr += "</style>\n";
+//   ptr += "<script>\n";
+//   ptr += "setInterval(loadDoc,1000);\n";
+//   ptr += "function loadDoc() {\n";
+//   ptr += "var xhttp = new XMLHttpRequest();\n";
+//   ptr += "xhttp.onreadystatechange = function() {\n";
+//   ptr += "if (this.readyState == 4 && this.status == 200) {\n";
+//   ptr += "document.body.innerHTML =this.responseText}\n";
+//   ptr += "};\n";
+//   ptr += "xhttp.open(\"GET\", \"/\", true);\n";
+//   ptr += "xhttp.send();\n";
+//   ptr += "}\n";
+//   ptr += "</script>\n";
+//   ptr += "</head>\n";
+//   ptr += "<body>\n";
+//   ptr += "<div id=\"webpage\">\n";
 
-  ptr += "<div style=\" display: inline; \">";
-  ptr += "<p style=\"font-size: 15px; \">Sinh Viên: Lê Văn Dũng</p>";
-  ptr += "<p style=\"font-size: 15px; \">MSSV: 1912950</p>";
-  ptr += "</div>";
-  ptr += "<h1>Air Monitoring</h1>\n";
+//   ptr += "<div style=\" display: inline; \">";
+//   ptr += "<p style=\"font-size: 15px; \">Sinh Viên: Lê Văn Dũng</p>";
+//   ptr += "<p style=\"font-size: 15px; \">MSSV: 1912950</p>";
+//   ptr += "</div>";
+//   ptr += "<h1>Air Monitoring</h1>\n";
  
 
-  ptr += "<p>PM1.0: ";
-  ptr += pm1;
-  ptr += " ug/m3</p>";
+//   ptr += "<p>PM1.0: ";
+//   ptr += pm1;
+//   ptr += " ug/m3</p>";
  
-  ptr += "<p>PM2.5: ";
-  ptr += pm25;
-  ptr += " ug/m3</p>";
+//   ptr += "<p>PM2.5: ";
+//   ptr += pm25;
+//   ptr += " ug/m3</p>";
  
-  ptr += "<p>PM10: ";
-  ptr += pm10;
-  ptr += " ug/m3</p>";
+//   ptr += "<p>PM10: ";
+//   ptr += pm10;
+//   ptr += " ug/m3</p>";
 
 
-  ptr += "<p>Temp: ";
-  ptr += tempC;
-  ptr += " °C</p>";
-  ptr += "<p>Humi: ";
-  ptr += humi;
-  ptr += "% </p>";
+//   ptr += "<p>Temp: ";
+//   ptr += tempC;
+//   ptr += " °C</p>";
+//   ptr += "<p>Humi: ";
+//   ptr += humi;
+//   ptr += "% </p>";
  
-  ptr += "</div>\n";
-  ptr += "</body>\n";
-  ptr += "</html>\n";
-  return ptr;
-}
+//   ptr += "</div>\n";
+//   ptr += "</body>\n";
+//   ptr += "</html>\n";
+//   return ptr;
+// }
 
 
 void check_MQ135(){
@@ -261,11 +287,11 @@ void check_DHT11(){
     lcd.print(humi);
     lcd.print("%");
 
-    if (tempC >= 35 || humi > 80 && RL1State == 0){
+    if (tempC >= 37 || humi > 80 && RL1State == 0){
       digitalWrite(RL1, HIGH);
       RL1State = 1;
     }
-    if (tempC < 35 && humi < 80 && RL1State == 1){
+    if (tempC < 37 && humi < 80 && RL1State == 1){
       digitalWrite(RL1, LOW);
       RL1State = 0;
     }
