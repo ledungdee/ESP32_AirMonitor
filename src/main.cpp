@@ -106,11 +106,6 @@ void loop() {
   check_MQ135();
   check_DHT11();
   check_PMS();
-  if (tempC > 40 && pm10State == pm25State == pm1State == 3 && fireAlert == 0){
-    send_SMS("Fire detected!");
-    fireAlert = 1;
-  }
-  else fireAlert == 0;
 
   if ( pm25State == 3 && airAlert == 0){
     send_SMS("Air quantity: BAD");
@@ -125,11 +120,11 @@ void lcd_Init(){
   lcd.init();         
   lcd.backlight();
   lcd.cursor_off();
-  lcd.setCursor(1,0);
-  lcd.print("LE DUNG - 1912950");
-  lcd.setCursor(6,2);
-  lcd.print("Project 2");
-  delay(1500);
+  lcd.setCursor(5,0);
+  lcd.print("LY VAN DU");
+  lcd.setCursor(3,2);
+  lcd.print("AIR MONITORING");
+  delay(2000);
 }
 
 void wifi_Init(){
@@ -140,7 +135,7 @@ void wifi_Init(){
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED);
   lcd.setCursor(0,1);
-  lcd.print("WiFi connected...!");
+  lcd.print("WiFi connected...");
   lcd.setCursor(0,2);
   lcd.print("IP:");
   lcd.print(WiFi.localIP());
